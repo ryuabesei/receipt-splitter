@@ -393,8 +393,7 @@ async function registerAccount() {
       accountPasswordInput.value = "";
       applyProfile();
     } else {
-      setAuthMode("login");
-      authStatus.textContent = "確認メールを送信しました。確認後にログインしてください。";
+      authStatus.textContent = "登録を完了できませんでした。Supabase の Confirm email をオフにしてください。";
     }
   } catch (error) {
     authStatus.textContent = `登録失敗: ${error.message}`;
