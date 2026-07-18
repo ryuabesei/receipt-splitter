@@ -1,5 +1,8 @@
+const HISTORY_KEY = "receipt-splitter-history";
+
 const state = {
   items: [],
+  history: loadHistory(),
 };
 
 const yenFormatter = new Intl.NumberFormat("ja-JP", {
@@ -19,6 +22,7 @@ const addRowButton = document.querySelector("#add-row");
 const clearButton = document.querySelector("#clear-button");
 const sampleButton = document.querySelector("#sample-button");
 const copyResultButton = document.querySelector("#copy-result");
+const completeSettlementButton = document.querySelector("#complete-settlement");
 const copyStatus = document.querySelector("#copy-status");
 const grandTotalEl = document.querySelector("#grand-total");
 const sharedTotalEl = document.querySelector("#shared-total");
@@ -32,6 +36,8 @@ const aOwed = document.querySelector("#a-owed");
 const bOwed = document.querySelector("#b-owed");
 const aPaid = document.querySelector("#a-paid");
 const bPaid = document.querySelector("#b-paid");
+const historyList = document.querySelector("#history-list");
+const historyCount = document.querySelector("#history-count");
 
 const sampleItems = [
   { name: "鍋用カット野菜", price: 258, owner: "shared", payer: "a" },
@@ -46,6 +52,7 @@ addRowButton.addEventListener("click", () => addItem());
 clearButton.addEventListener("click", clearItems);
 sampleButton.addEventListener("click", loadSample);
 copyResultButton.addEventListener("click", copySettlement);
+completeSettlementButton.addEventListener("click", completeSettlement);
 people.a.addEventListener("input", render);
 people.b.addEventListener("input", render);
 
@@ -84,6 +91,7 @@ function render() {
 
   updatePersonLabels();
   renderTotals();
+  renderHistory();
 }
 
 function createItemRow(item) {
@@ -149,6 +157,7 @@ function renderTotals() {
   grandTotalEl.textContent = formatYen(totals.grandTotal);
   sharedTotalEl.textContent = formatYen(totals.sharedTotal);
   itemCountEl.textContent = `${totals.itemCount}`;
+  completeSettlementButton.disabled = totals.itemCount === 0;
   aOwed.textContent = formatYen(totals.owed.a);
   bOwed.textContent = formatYen(totals.owed.b);
   aPaid.textContent = formatYen(totals.paid.a);
@@ -247,6 +256,98 @@ async function copySettlement() {
   }
 }
 
+function completeSettlement() {
+  const totals = calculateSettlement();
+  if (totals.itemCount === 0) {
+    copyStatus.textContent = "商品未入力";
+    return;
+  }
+
+  const historyItem = {
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+    people: {
+      a: getName("a"),
+      b: getName("b"),
+    },
+    items: state.items
+      .filter((item) => item.name.trim() || Number(item.price) > 0)
+      .map((item) => ({
+        name: item.name.trim() || "商品名未入力",
+        price: Math.max(0, Math.round(Number(item.price) || 0)),
+        owner: item.owner,
+        payer: item.payer,
+      })),
+    totals,
+    memo: buildSettlementText(totals),
+  };
+
+  state.history = [historyItem, ...state.history].slice(0, 30);
+  saveHistory();
+  state.items = [];
+  addItem({ name: "", price: 0, owner: "shared", payer: "a" });
+  copyStatus.textContent = "精算を保存";
+}
+
+function renderHistory() {
+  historyCount.textContent = `${state.history.length}件`;
+  historyList.replaceChildren();
+  for (const entry of state.history) {
+    historyList.append(createHistoryEntry(entry));
+  }
+}
+
+function createHistoryEntry(entry) {
+  const article = document.createElement("article");
+  article.className = "history-entry";
+
+  const title = document.createElement("div");
+  title.className = "history-entry-title";
+
+  const date = document.createElement("span");
+  date.textContent = formatDate(entry.createdAt);
+
+  const result = document.createElement("strong");
+  result.textContent = formatHistoryTransfer(entry);
+
+  title.append(date, result);
+
+  const details = document.createElement("p");
+  details.textContent = `${entry.people.a} / ${entry.people.b} ・ ${formatYen(entry.totals.grandTotal)} ・ ${entry.items.length}件`;
+
+  const itemSummary = document.createElement("small");
+  itemSummary.textContent = entry.items
+    .slice(0, 3)
+    .map((item) => item.name)
+    .join("、") || "商品なし";
+
+  article.append(title, details, itemSummary);
+  return article;
+}
+
+function formatHistoryTransfer(entry) {
+  const { from, to, amount } = entry.totals.transfer;
+  if (amount === 0) return "精算なし";
+  return `${entry.people[from]} → ${entry.people[to]} ${formatYen(amount)}`;
+}
+
+function loadHistory() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveHistory() {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history));
+  } catch (error) {
+    copyStatus.textContent = "履歴保存失敗";
+  }
+}
+
 function fallbackCopy(text) {
   const textarea = document.createElement("textarea");
   textarea.value = text;
@@ -266,4 +367,13 @@ function getName(person) {
 
 function formatYen(value) {
   return yenFormatter.format(Math.round(Number(value) || 0));
+}
+
+function formatDate(value) {
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }

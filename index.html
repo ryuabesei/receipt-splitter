@@ -56,6 +56,7 @@
         </section>
 
         <button id="copy-result" class="secondary-button" type="button">結果をコピー</button>
+        <button id="complete-settlement" class="primary-button" type="button">精算完了</button>
         <span id="copy-status">未コピー</span>
       </aside>
 
@@ -114,6 +115,18 @@
             </div>
           </div>
           <textarea id="settlement-text" rows="10" readonly></textarea>
+        </section>
+
+        <section class="history-panel" aria-label="過去の精算">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">History</p>
+              <h3>過去の精算</h3>
+            </div>
+            <span id="history-count">0件</span>
+          </div>
+          <div id="history-list" class="history-list"></div>
+          <p id="empty-history" class="empty-items">精算完了すると、ここに履歴が残ります。</p>
         </section>
       </section>
     </main>

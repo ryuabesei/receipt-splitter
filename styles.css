@@ -105,6 +105,7 @@ h3 {
 .balance-panel article,
 .split-panel,
 .result-panel,
+.history-panel,
 .summary-grid article {
   border: 1px solid #cbd7ea;
   border-radius: 8px;
@@ -114,7 +115,8 @@ h3 {
 .settings-panel,
 .result-card,
 .split-panel,
-.result-panel {
+.result-panel,
+.history-panel {
   display: grid;
   gap: 14px;
   padding: 16px;
@@ -296,6 +298,55 @@ button:focus-visible {
   text-align: center;
 }
 
+.history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.history-list:not(:empty) + .empty-items {
+  display: none;
+}
+
+.history-entry {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #d4dff0;
+  border-radius: 8px;
+  background: #f3f7fd;
+}
+
+.history-entry-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.history-entry-title span,
+#history-count {
+  color: #687994;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.history-entry-title strong {
+  color: #0f2f63;
+  text-align: right;
+}
+
+.history-entry p {
+  color: #1d2f4c;
+  font-size: 13px;
+}
+
+.history-entry small {
+  color: #687994;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .primary-button,
 .secondary-button,
 .icon-button,
@@ -341,6 +392,11 @@ button:focus-visible {
   background: #ffffff;
   color: #244f9e;
   font-weight: 900;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
 }
 
 #copy-status {
