@@ -8,6 +8,7 @@ const state = {
   profile: {},
   session: null,
   authMode: "register",
+  settingsOpen: false,
 };
 
 const yenFormatter = new Intl.NumberFormat("ja-JP", {
@@ -36,6 +37,8 @@ const authStatus = document.querySelector("#auth-status");
 const registerPrompt = document.querySelector("#register-prompt");
 const loginPrompt = document.querySelector("#login-prompt");
 const currentEmail = document.querySelector("#current-email");
+const settingsToggleButton = document.querySelector("#settings-toggle");
+const settingsPanel = document.querySelector("#settings-panel");
 const saveAccountButton = document.querySelector("#save-account");
 const logoutAccountButton = document.querySelector("#logout-account");
 const accountStatus = document.querySelector("#account-status");
@@ -69,6 +72,7 @@ loginAccountButton.addEventListener("click", loginAccount);
 registerAccountButton.addEventListener("click", registerAccount);
 showLoginButton.addEventListener("click", () => setAuthMode("login"));
 showRegisterButton.addEventListener("click", () => setAuthMode("register"));
+settingsToggleButton.addEventListener("click", toggleSettingsPanel);
 saveAccountButton.addEventListener("click", saveProfile);
 logoutAccountButton.addEventListener("click", logoutAccount);
 accountNameInput.addEventListener("input", handleProfileInput);
@@ -357,7 +361,20 @@ function applyProfile() {
   people.b.value = state.profile.people?.b || "相手";
   currentEmail.textContent = loggedIn ? state.session.user.email : "";
   accountStatus.textContent = loggedIn ? "同期済み" : "";
+  renderSettingsPanel();
   render();
+}
+
+function toggleSettingsPanel() {
+  state.settingsOpen = !state.settingsOpen;
+  renderSettingsPanel();
+}
+
+function renderSettingsPanel() {
+  settingsPanel.hidden = !state.settingsOpen;
+  settingsToggleButton.setAttribute("aria-expanded", String(state.settingsOpen));
+  settingsToggleButton.setAttribute("aria-label", state.settingsOpen ? "精算設定を閉じる" : "精算設定を開く");
+  settingsToggleButton.title = state.settingsOpen ? "精算設定を閉じる" : "精算設定";
 }
 
 function setAuthMode(mode) {
@@ -434,6 +451,7 @@ async function logoutAccount() {
   state.session = null;
   state.profile = {};
   state.history = [];
+  state.settingsOpen = false;
   localStorage.removeItem(SESSION_KEY);
   accountEmailInput.value = "";
   accountPasswordInput.value = "";
