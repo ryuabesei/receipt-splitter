@@ -1,14 +1,12 @@
-const LEGACY_HISTORY_KEY = "receipt-splitter-history";
-const LEGACY_PROFILE_KEY = "receipt-splitter-profile";
-const ACCOUNTS_KEY = "receipt-splitter-accounts";
-const ACTIVE_ACCOUNT_KEY = "receipt-splitter-active-account";
+const SUPABASE_URL = "https://omperlnpvpjwnryboyob.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_gYQG_iVrP4AfGqPLQJVRFQ_jCQ7ELvc";
+const SESSION_KEY = "receipt-splitter-supabase-session";
 
 const state = {
   items: [],
-  accounts: loadAccounts(),
-  activeAccountId: localStorage.getItem(ACTIVE_ACCOUNT_KEY) || "",
   history: [],
   profile: {},
+  session: null,
 };
 
 const yenFormatter = new Intl.NumberFormat("ja-JP", {
@@ -22,9 +20,11 @@ const people = {
   b: document.querySelector("#person-b"),
 };
 
+const accountEmailInput = document.querySelector("#account-email");
+const accountPasswordInput = document.querySelector("#account-password");
 const accountNameInput = document.querySelector("#account-name");
-const accountSelect = document.querySelector("#account-select");
 const loginAccountButton = document.querySelector("#login-account");
+const registerAccountButton = document.querySelector("#register-account");
 const saveAccountButton = document.querySelector("#save-account");
 const logoutAccountButton = document.querySelector("#logout-account");
 const accountStatus = document.querySelector("#account-status");
@@ -66,17 +66,23 @@ sampleButton.addEventListener("click", loadSample);
 copyResultButton.addEventListener("click", copySettlement);
 completeSettlementButton.addEventListener("click", completeSettlement);
 loginAccountButton.addEventListener("click", loginAccount);
+registerAccountButton.addEventListener("click", registerAccount);
 saveAccountButton.addEventListener("click", saveProfile);
 logoutAccountButton.addEventListener("click", logoutAccount);
 accountNameInput.addEventListener("input", handleProfileInput);
 people.a.addEventListener("input", handleProfileInput);
 people.b.addEventListener("input", handleProfileInput);
 
-upgradeLegacyAccount();
-state.profile = getActiveAccount();
-state.history = state.profile.history || [];
-applyProfile();
-addItem({ name: "", price: 0, owner: "shared", payer: "a" });
+initializeApp();
+
+async function initializeApp() {
+  state.session = await restoreSession();
+  if (state.session) {
+    await loadCloudData();
+  }
+  applyProfile();
+  addItem({ name: "", price: 0, owner: "shared", payer: "a" });
+}
 
 function addItem(item = {}) {
   state.items.push({
@@ -96,10 +102,7 @@ function clearItems() {
 }
 
 function loadSample() {
-  state.items = sampleItems.map((item) => ({
-    ...item,
-    id: crypto.randomUUID(),
-  }));
+  state.items = sampleItems.map((item) => ({ ...item, id: crypto.randomUUID() }));
   render();
 }
 
@@ -108,7 +111,6 @@ function render() {
   for (const item of state.items) {
     itemList.append(createItemRow(item));
   }
-
   updatePersonLabels();
   renderTotals();
   renderHistory();
@@ -148,7 +150,6 @@ function createItemRow(item) {
     state.items = state.items.filter((candidate) => candidate.id !== item.id);
     render();
   });
-
   return row;
 }
 
@@ -191,7 +192,6 @@ function renderTotals() {
     settlementMain.textContent = `${getName(from)} → ${getName(to)} ${formatYen(amount)}`;
     settlementSub.textContent = `${getName(from)}が${getName(to)}に支払えば精算完了です。`;
   }
-
   settlementText.value = buildSettlementText(totals);
 }
 
@@ -207,12 +207,9 @@ function calculateSettlement() {
 
   for (const item of state.items) {
     const price = Math.max(0, Math.round(Number(item.price) || 0));
-    if (item.name.trim() || price > 0) {
-      totals.itemCount += 1;
-    }
+    if (item.name.trim() || price > 0) totals.itemCount += 1;
     totals.grandTotal += price;
     totals.paid[item.payer] += price;
-
     if (item.owner === "shared") {
       totals.sharedTotal += price;
       totals.owed.a += price / 2;
@@ -224,14 +221,12 @@ function calculateSettlement() {
 
   totals.owed.a = Math.round(totals.owed.a);
   totals.owed.b = totals.grandTotal - totals.owed.a;
-
   const balanceA = totals.paid.a - totals.owed.a;
   if (balanceA > 0) {
     totals.transfer = { from: "b", to: "a", amount: balanceA };
   } else if (balanceA < 0) {
     totals.transfer = { from: "a", to: "b", amount: Math.abs(balanceA) };
   }
-
   return totals;
 }
 
@@ -242,12 +237,10 @@ function buildSettlementText(totals) {
         return `・${item.name || "商品名未入力"} ${formatYen(item.price)} / ${owner} / 支払い:${getName(item.payer)}`;
       })
     : ["・商品未入力"];
-
   const transfer =
     totals.transfer.amount === 0
       ? "精算なし"
       : `${getName(totals.transfer.from)}が${getName(totals.transfer.to)}に${formatYen(totals.transfer.amount)}払う`;
-
   return [
     "買い出し精算",
     "",
@@ -263,12 +256,11 @@ function buildSettlementText(totals) {
 }
 
 async function copySettlement() {
-  const text = settlementText.value;
   try {
     if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(settlementText.value);
     } else {
-      fallbackCopy(text);
+      fallbackCopy(settlementText.value);
     }
     copyStatus.textContent = "コピー済み";
   } catch (error) {
@@ -276,11 +268,11 @@ async function copySettlement() {
   }
 }
 
-function completeSettlement() {
+async function completeSettlement() {
   const totals = calculateSettlement();
-  if (!state.activeAccountId) {
+  if (!state.session) {
     copyStatus.textContent = "ログインが必要";
-    accountNameInput.focus();
+    accountEmailInput.focus();
     return;
   }
   if (totals.itemCount === 0) {
@@ -288,13 +280,11 @@ function completeSettlement() {
     return;
   }
 
+  completeSettlementButton.disabled = true;
+  copyStatus.textContent = "保存中...";
   const historyItem = {
-    id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
-    people: {
-      a: getName("a"),
-      b: getName("b"),
-    },
+    people: { a: getName("a"), b: getName("b") },
     items: state.items
       .filter((item) => item.name.trim() || Number(item.price) > 0)
       .map((item) => ({
@@ -307,45 +297,43 @@ function completeSettlement() {
     memo: buildSettlementText(totals),
   };
 
-  state.history = [historyItem, ...state.history].slice(0, 30);
-  saveHistory();
-  state.items = [];
-  addItem({ name: "", price: 0, owner: "shared", payer: "a" });
-  copyStatus.textContent = "精算を保存";
+  try {
+    const rows = await supabaseRequest("/rest/v1/settlements", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify([{ data: historyItem }]),
+    });
+    state.history = [{ ...historyItem, id: rows[0].id, createdAt: rows[0].created_at }, ...state.history];
+    state.items = [];
+    addItem({ name: "", price: 0, owner: "shared", payer: "a" });
+    copyStatus.textContent = "精算を保存";
+  } catch (error) {
+    copyStatus.textContent = `保存失敗: ${error.message}`;
+  } finally {
+    renderTotals();
+  }
 }
 
 function renderHistory() {
   historyCount.textContent = `${state.history.length}件`;
   historyList.replaceChildren();
-  for (const entry of state.history) {
-    historyList.append(createHistoryEntry(entry));
-  }
+  for (const entry of state.history) historyList.append(createHistoryEntry(entry));
 }
 
 function createHistoryEntry(entry) {
   const article = document.createElement("article");
   article.className = "history-entry";
-
   const title = document.createElement("div");
   title.className = "history-entry-title";
-
   const date = document.createElement("span");
   date.textContent = formatDate(entry.createdAt);
-
   const result = document.createElement("strong");
   result.textContent = formatHistoryTransfer(entry);
-
   title.append(date, result);
-
   const details = document.createElement("p");
   details.textContent = `${entry.people.a} / ${entry.people.b} ・ ${formatYen(entry.totals.grandTotal)} ・ ${entry.items.length}件`;
-
   const itemSummary = document.createElement("small");
-  itemSummary.textContent = entry.items
-    .slice(0, 3)
-    .map((item) => item.name)
-    .join("、") || "商品なし";
-
+  itemSummary.textContent = entry.items.slice(0, 3).map((item) => item.name).join("、") || "商品なし";
   article.append(title, details, itemSummary);
   return article;
 }
@@ -356,152 +344,214 @@ function formatHistoryTransfer(entry) {
   return `${entry.people[from]} → ${entry.people[to]} ${formatYen(amount)}`;
 }
 
-function saveHistory() {
-  if (!state.activeAccountId) return;
-  state.accounts = state.accounts.map((account) =>
-    account.id === state.activeAccountId ? { ...account, history: state.history } : account,
-  );
-  saveAccounts();
-}
-
 function handleProfileInput() {
-  accountStatus.textContent = state.activeAccountId ? "未保存" : "未ログイン";
+  if (state.session) accountStatus.textContent = "名前は未保存";
   render();
-  if (state.activeAccountId) {
-    saveProfile({ silent: true });
-  }
 }
 
 function applyProfile() {
-  renderAccountOptions();
+  const loggedIn = Boolean(state.session);
+  accountEmailInput.disabled = loggedIn;
+  accountPasswordInput.disabled = loggedIn;
+  loginAccountButton.disabled = loggedIn;
+  registerAccountButton.disabled = loggedIn;
+  accountNameInput.disabled = !loggedIn;
+  people.a.disabled = !loggedIn;
+  people.b.disabled = !loggedIn;
+  saveAccountButton.disabled = !loggedIn;
+  logoutAccountButton.disabled = !loggedIn;
+
   accountNameInput.value = state.profile.accountName || "";
   people.a.value = state.profile.people?.a || "自分";
   people.b.value = state.profile.people?.b || "相手";
-  accountSelect.value = state.activeAccountId;
-  accountStatus.textContent = state.activeAccountId ? `ログイン中: ${state.profile.accountName}` : "未ログイン";
+  accountStatus.textContent = loggedIn ? `ログイン中: ${state.session.user.email}` : "ログインしてください";
+  render();
 }
 
-function saveProfile(options = {}) {
+async function registerAccount() {
+  const credentials = getCredentials();
+  if (!credentials) return;
+  setAuthLoading(true, "登録中...");
+  try {
+    const result = await supabaseRequest("/auth/v1/signup", {
+      method: "POST",
+      body: JSON.stringify(credentials),
+    }, null);
+    if (result.session) {
+      state.session = result.session;
+      saveSession();
+      await loadCloudData();
+      accountPasswordInput.value = "";
+      applyProfile();
+    } else {
+      accountStatus.textContent = "確認メールを送信しました。確認後にログインしてください。";
+    }
+  } catch (error) {
+    accountStatus.textContent = `登録失敗: ${error.message}`;
+  } finally {
+    if (!state.session) setAuthLoading(false);
+  }
+}
+
+async function loginAccount() {
+  const credentials = getCredentials();
+  if (!credentials) return;
+  setAuthLoading(true, "ログイン中...");
+  try {
+    const session = await supabaseRequest("/auth/v1/token?grant_type=password", {
+      method: "POST",
+      body: JSON.stringify(credentials),
+    }, null);
+    state.session = session;
+    saveSession();
+    await loadCloudData();
+    accountPasswordInput.value = "";
+    applyProfile();
+  } catch (error) {
+    accountStatus.textContent = `ログイン失敗: ${error.message}`;
+  } finally {
+    if (!state.session) setAuthLoading(false);
+  }
+}
+
+async function logoutAccount() {
+  try {
+    if (state.session) {
+      await supabaseRequest("/auth/v1/logout", { method: "POST" });
+    }
+  } catch (error) {
+    // Clearing the local session still logs this browser out.
+  }
+  state.session = null;
+  state.profile = {};
+  state.history = [];
+  localStorage.removeItem(SESSION_KEY);
+  accountEmailInput.value = "";
+  accountPasswordInput.value = "";
+  applyProfile();
+}
+
+async function saveProfile() {
+  if (!state.session) return;
   const accountName = accountNameInput.value.trim();
   if (!accountName) {
-    accountStatus.textContent = "名前を入力";
+    accountStatus.textContent = "精算名を入力してください";
     accountNameInput.focus();
     return;
   }
-
-  const existingAccount = state.activeAccountId
-    ? state.accounts.find((account) => account.id === state.activeAccountId)
-    : null;
-
-  state.profile = {
-    id: existingAccount?.id || crypto.randomUUID(),
-    accountName,
-    people: {
-      a: getName("a"),
-      b: getName("b"),
-    },
-    history: existingAccount?.history || state.history || [],
-    savedAt: new Date().toISOString(),
+  saveAccountButton.disabled = true;
+  accountStatus.textContent = "保存中...";
+  const profile = {
+    id: state.session.user.id,
+    account_name: accountName,
+    person_a: getName("a"),
+    person_b: getName("b"),
+    updated_at: new Date().toISOString(),
   };
-
-  state.activeAccountId = state.profile.id;
-  state.history = state.profile.history;
-  upsertAccount(state.profile);
-  localStorage.setItem(ACTIVE_ACCOUNT_KEY, state.activeAccountId);
-  renderAccountOptions();
-  accountSelect.value = state.activeAccountId;
-  accountStatus.textContent = options.silent ? "自動保存" : "ログイン中";
-}
-
-function loginAccount() {
-  const account = state.accounts.find((candidate) => candidate.id === accountSelect.value);
-  if (!account) {
-    accountStatus.textContent = "選択してください";
-    return;
-  }
-
-  state.activeAccountId = account.id;
-  state.profile = account;
-  state.history = account.history || [];
-  localStorage.setItem(ACTIVE_ACCOUNT_KEY, account.id);
-  applyProfile();
-  render();
-}
-
-function logoutAccount() {
-  state.activeAccountId = "";
-  state.profile = {};
-  state.history = [];
-  localStorage.removeItem(ACTIVE_ACCOUNT_KEY);
-  accountNameInput.value = "";
-  people.a.value = "自分";
-  people.b.value = "相手";
-  accountSelect.value = "";
-  accountStatus.textContent = "ログアウト";
-  render();
-}
-
-function upsertAccount(account) {
-  const index = state.accounts.findIndex((candidate) => candidate.id === account.id);
-  if (index >= 0) {
-    state.accounts[index] = account;
-  } else {
-    state.accounts.push(account);
-  }
-  saveAccounts();
-}
-
-function renderAccountOptions() {
-  accountSelect.replaceChildren(new Option("アカウントを選択", ""));
-  for (const account of state.accounts) {
-    accountSelect.append(new Option(account.accountName, account.id));
-  }
-}
-
-function getActiveAccount() {
-  return state.accounts.find((account) => account.id === state.activeAccountId) || {};
-}
-
-function loadAccounts() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(ACCOUNTS_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed : [];
+    await supabaseRequest(`/rest/v1/profiles?id=eq.${encodeURIComponent(state.session.user.id)}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(profile),
+    });
+    state.profile = { accountName: profile.account_name, people: { a: profile.person_a, b: profile.person_b } };
+    accountStatus.textContent = "名前を保存しました";
+    render();
   } catch (error) {
-    return [];
+    accountStatus.textContent = `保存失敗: ${error.message}`;
+  } finally {
+    saveAccountButton.disabled = false;
   }
 }
 
-function saveAccounts() {
+async function loadCloudData() {
   try {
-    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(state.accounts));
+    const userId = encodeURIComponent(state.session.user.id);
+    const profiles = await supabaseRequest(`/rest/v1/profiles?id=eq.${userId}&select=*`);
+    if (profiles.length === 0) {
+      const profile = {
+        id: state.session.user.id,
+        account_name: "精算アカウント",
+        person_a: "自分",
+        person_b: "相手",
+      };
+      await supabaseRequest("/rest/v1/profiles", {
+        method: "POST",
+        body: JSON.stringify(profile),
+      });
+      state.profile = { accountName: profile.account_name, people: { a: profile.person_a, b: profile.person_b } };
+    } else {
+      const profile = profiles[0];
+      state.profile = {
+        accountName: profile.account_name,
+        people: { a: profile.person_a, b: profile.person_b },
+      };
+    }
+
+    const rows = await supabaseRequest("/rest/v1/settlements?select=id,created_at,data&order=created_at.desc&limit=30");
+    state.history = rows.map((row) => ({ ...row.data, id: row.id, createdAt: row.created_at }));
   } catch (error) {
-    accountStatus.textContent = "保存失敗";
+    state.history = [];
+    accountStatus.textContent = `データ取得失敗: ${error.message}`;
   }
 }
 
-function upgradeLegacyAccount() {
-  if (state.accounts.length > 0) return;
-
-  try {
-    const legacyProfile = JSON.parse(localStorage.getItem(LEGACY_PROFILE_KEY) || "{}");
-    const legacyHistory = JSON.parse(localStorage.getItem(LEGACY_HISTORY_KEY) || "[]");
-    if (!legacyProfile.accountName && !legacyProfile.people && !Array.isArray(legacyHistory)) return;
-
-    const account = {
-      id: crypto.randomUUID(),
-      accountName: legacyProfile.accountName || "既存アカウント",
-      people: legacyProfile.people || { a: "自分", b: "相手" },
-      history: Array.isArray(legacyHistory) ? legacyHistory : [],
-      savedAt: legacyProfile.savedAt || new Date().toISOString(),
-    };
-
-    state.accounts = [account];
-    state.activeAccountId = account.id;
-    saveAccounts();
-    localStorage.setItem(ACTIVE_ACCOUNT_KEY, account.id);
-  } catch (error) {
-    state.accounts = [];
+function getCredentials() {
+  const email = accountEmailInput.value.trim();
+  const password = accountPasswordInput.value;
+  if (!email || !password) {
+    accountStatus.textContent = "メールアドレスとパスワードを入力してください";
+    return null;
   }
+  if (password.length < 6) {
+    accountStatus.textContent = "パスワードは6文字以上です";
+    return null;
+  }
+  return { email, password };
+}
+
+function setAuthLoading(isLoading, message = "") {
+  loginAccountButton.disabled = isLoading;
+  registerAccountButton.disabled = isLoading;
+  if (message) accountStatus.textContent = message;
+}
+
+async function restoreSession() {
+  try {
+    const session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+    if (!session?.access_token || !session?.refresh_token) return null;
+    if (session.expires_at * 1000 > Date.now() + 60_000) return session;
+    const refreshed = await supabaseRequest("/auth/v1/token?grant_type=refresh_token", {
+      method: "POST",
+      body: JSON.stringify({ refresh_token: session.refresh_token }),
+    }, null);
+    localStorage.setItem(SESSION_KEY, JSON.stringify(refreshed));
+    return refreshed;
+  } catch (error) {
+    localStorage.removeItem(SESSION_KEY);
+    return null;
+  }
+}
+
+function saveSession() {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(state.session));
+}
+
+async function supabaseRequest(path, options = {}, token = state.session?.access_token) {
+  const headers = new Headers(options.headers || {});
+  headers.set("apikey", SUPABASE_PUBLISHABLE_KEY);
+  headers.set("Content-Type", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(`${SUPABASE_URL}${path}`, { ...options, headers });
+  const text = await response.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch (error) {
+    data = { message: text };
+  }
+  if (!response.ok) throw new Error(data?.msg || data?.message || "通信に失敗しました");
+  return data;
 }
 
 function fallbackCopy(text) {

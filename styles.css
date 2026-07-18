@@ -143,7 +143,12 @@ h3 {
 }
 
 .account-actions #logout-account {
-  grid-column: 1 / -1;
+  grid-column: 2;
+}
+
+.account-divider {
+  height: 1px;
+  background: #d4dff0;
 }
 
 label {
