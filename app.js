@@ -1,8 +1,10 @@
 const HISTORY_KEY = "receipt-splitter-history";
+const PROFILE_KEY = "receipt-splitter-profile";
 
 const state = {
   items: [],
   history: loadHistory(),
+  profile: loadProfile(),
 };
 
 const yenFormatter = new Intl.NumberFormat("ja-JP", {
@@ -16,6 +18,9 @@ const people = {
   b: document.querySelector("#person-b"),
 };
 
+const accountNameInput = document.querySelector("#account-name");
+const saveAccountButton = document.querySelector("#save-account");
+const accountStatus = document.querySelector("#account-status");
 const itemList = document.querySelector("#item-list");
 const itemTemplate = document.querySelector("#item-template");
 const addRowButton = document.querySelector("#add-row");
@@ -53,9 +58,12 @@ clearButton.addEventListener("click", clearItems);
 sampleButton.addEventListener("click", loadSample);
 copyResultButton.addEventListener("click", copySettlement);
 completeSettlementButton.addEventListener("click", completeSettlement);
-people.a.addEventListener("input", render);
-people.b.addEventListener("input", render);
+saveAccountButton.addEventListener("click", saveProfile);
+accountNameInput.addEventListener("input", handleProfileInput);
+people.a.addEventListener("input", handleProfileInput);
+people.b.addEventListener("input", handleProfileInput);
 
+applyProfile();
 addItem({ name: "", price: 0, owner: "shared", payer: "a" });
 
 function addItem(item = {}) {
@@ -345,6 +353,50 @@ function saveHistory() {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history));
   } catch (error) {
     copyStatus.textContent = "履歴保存失敗";
+  }
+}
+
+function handleProfileInput() {
+  accountStatus.textContent = "未保存";
+  render();
+  saveProfile({ silent: true });
+}
+
+function applyProfile() {
+  accountNameInput.value = state.profile.accountName || "";
+  people.a.value = state.profile.people?.a || "自分";
+  people.b.value = state.profile.people?.b || "相手";
+  accountStatus.textContent = state.profile.savedAt ? "登録済み" : "未登録";
+}
+
+function saveProfile(options = {}) {
+  state.profile = {
+    accountName: accountNameInput.value.trim(),
+    people: {
+      a: getName("a"),
+      b: getName("b"),
+    },
+    savedAt: new Date().toISOString(),
+  };
+
+  try {
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(state.profile));
+    if (!options.silent) {
+      accountStatus.textContent = "保存済み";
+    } else {
+      accountStatus.textContent = "自動保存";
+    }
+  } catch (error) {
+    accountStatus.textContent = "保存失敗";
+  }
+}
+
+function loadProfile() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    return {};
   }
 }
 

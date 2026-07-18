@@ -19,9 +19,13 @@
 
         <section class="settings-panel" aria-label="2人の名前">
           <div>
-            <p class="eyebrow">People</p>
-            <h2>2人の名前</h2>
+            <p class="eyebrow">Account</p>
+            <h2>アカウント</h2>
           </div>
+          <label>
+            <span>アカウント名</span>
+            <input id="account-name" type="text" value="" placeholder="例: 旅行用" />
+          </label>
           <label>
             <span>自分</span>
             <input id="person-a" type="text" value="自分" />
@@ -30,6 +34,8 @@
             <span>相手</span>
             <input id="person-b" type="text" value="相手" />
           </label>
+          <button id="save-account" class="secondary-button" type="button">登録 / 保存</button>
+          <span id="account-status">未登録</span>
         </section>
 
         <section class="result-card" aria-label="支払い結果">

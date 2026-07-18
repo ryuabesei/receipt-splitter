@@ -399,7 +399,8 @@ button:disabled {
   opacity: 0.52;
 }
 
-#copy-status {
+#copy-status,
+#account-status {
   align-self: center;
   color: #687994;
   font-size: 12px;
