@@ -386,8 +386,8 @@ async function registerAccount() {
       method: "POST",
       body: JSON.stringify(credentials),
     }, null);
-    if (result.session) {
-      state.session = result.session;
+    if (result.access_token) {
+      state.session = result;
       saveSession();
       await loadCloudData();
       accountPasswordInput.value = "";
