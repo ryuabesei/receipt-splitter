@@ -7,6 +7,7 @@ const state = {
   history: [],
   profile: {},
   session: null,
+  authMode: "register",
 };
 
 const yenFormatter = new Intl.NumberFormat("ja-JP", {
@@ -25,6 +26,16 @@ const accountPasswordInput = document.querySelector("#account-password");
 const accountNameInput = document.querySelector("#account-name");
 const loginAccountButton = document.querySelector("#login-account");
 const registerAccountButton = document.querySelector("#register-account");
+const showLoginButton = document.querySelector("#show-login");
+const showRegisterButton = document.querySelector("#show-register");
+const authView = document.querySelector("#auth-view");
+const appView = document.querySelector("#app-view");
+const authTitle = document.querySelector("#auth-title");
+const authDescription = document.querySelector("#auth-description");
+const authStatus = document.querySelector("#auth-status");
+const registerPrompt = document.querySelector("#register-prompt");
+const loginPrompt = document.querySelector("#login-prompt");
+const currentEmail = document.querySelector("#current-email");
 const saveAccountButton = document.querySelector("#save-account");
 const logoutAccountButton = document.querySelector("#logout-account");
 const accountStatus = document.querySelector("#account-status");
@@ -32,7 +43,6 @@ const itemList = document.querySelector("#item-list");
 const itemTemplate = document.querySelector("#item-template");
 const addRowButton = document.querySelector("#add-row");
 const clearButton = document.querySelector("#clear-button");
-const sampleButton = document.querySelector("#sample-button");
 const copyResultButton = document.querySelector("#copy-result");
 const completeSettlementButton = document.querySelector("#complete-settlement");
 const copyStatus = document.querySelector("#copy-status");
@@ -51,22 +61,14 @@ const bPaid = document.querySelector("#b-paid");
 const historyList = document.querySelector("#history-list");
 const historyCount = document.querySelector("#history-count");
 
-const sampleItems = [
-  { name: "鍋用カット野菜", price: 258, owner: "shared", payer: "a" },
-  { name: "豚ばら肉", price: 612, owner: "shared", payer: "a" },
-  { name: "豆腐", price: 98, owner: "shared", payer: "b" },
-  { name: "ビール 6缶", price: 1080, owner: "shared", payer: "b" },
-  { name: "自分用シャンプー", price: 698, owner: "a", payer: "a" },
-  { name: "相手のコーヒー", price: 220, owner: "b", payer: "a" },
-];
-
 addRowButton.addEventListener("click", () => addItem());
 clearButton.addEventListener("click", clearItems);
-sampleButton.addEventListener("click", loadSample);
 copyResultButton.addEventListener("click", copySettlement);
 completeSettlementButton.addEventListener("click", completeSettlement);
 loginAccountButton.addEventListener("click", loginAccount);
 registerAccountButton.addEventListener("click", registerAccount);
+showLoginButton.addEventListener("click", () => setAuthMode("login"));
+showRegisterButton.addEventListener("click", () => setAuthMode("register"));
 saveAccountButton.addEventListener("click", saveProfile);
 logoutAccountButton.addEventListener("click", logoutAccount);
 accountNameInput.addEventListener("input", handleProfileInput);
@@ -79,6 +81,8 @@ async function initializeApp() {
   state.session = await restoreSession();
   if (state.session) {
     await loadCloudData();
+  } else {
+    setAuthMode("register");
   }
   applyProfile();
   addItem({ name: "", price: 0, owner: "shared", payer: "a" });
@@ -98,11 +102,6 @@ function addItem(item = {}) {
 
 function clearItems() {
   state.items = [];
-  render();
-}
-
-function loadSample() {
-  state.items = sampleItems.map((item) => ({ ...item, id: crypto.randomUUID() }));
   render();
 }
 
@@ -351,21 +350,31 @@ function handleProfileInput() {
 
 function applyProfile() {
   const loggedIn = Boolean(state.session);
-  accountEmailInput.disabled = loggedIn;
-  accountPasswordInput.disabled = loggedIn;
-  loginAccountButton.disabled = loggedIn;
-  registerAccountButton.disabled = loggedIn;
-  accountNameInput.disabled = !loggedIn;
-  people.a.disabled = !loggedIn;
-  people.b.disabled = !loggedIn;
-  saveAccountButton.disabled = !loggedIn;
-  logoutAccountButton.disabled = !loggedIn;
-
+  authView.hidden = loggedIn;
+  appView.hidden = !loggedIn;
   accountNameInput.value = state.profile.accountName || "";
   people.a.value = state.profile.people?.a || "自分";
   people.b.value = state.profile.people?.b || "相手";
-  accountStatus.textContent = loggedIn ? `ログイン中: ${state.session.user.email}` : "ログインしてください";
+  currentEmail.textContent = loggedIn ? state.session.user.email : "";
+  accountStatus.textContent = loggedIn ? "同期済み" : "";
   render();
+}
+
+function setAuthMode(mode) {
+  state.authMode = mode;
+  const registering = mode === "register";
+  authTitle.textContent = registering ? "アカウントを作成" : "ログイン";
+  authDescription.textContent = registering
+    ? "精算履歴を保存して、どの端末からでも使えます。"
+    : "登録したメールアドレスとパスワードを入力してください。";
+  accountPasswordInput.autocomplete = registering ? "new-password" : "current-password";
+  registerAccountButton.hidden = !registering;
+  loginAccountButton.hidden = registering;
+  registerPrompt.hidden = !registering;
+  loginPrompt.hidden = registering;
+  showLoginButton.hidden = !registering;
+  showRegisterButton.hidden = registering;
+  authStatus.textContent = "";
 }
 
 async function registerAccount() {
@@ -384,10 +393,11 @@ async function registerAccount() {
       accountPasswordInput.value = "";
       applyProfile();
     } else {
-      accountStatus.textContent = "確認メールを送信しました。確認後にログインしてください。";
+      setAuthMode("login");
+      authStatus.textContent = "確認メールを送信しました。確認後にログインしてください。";
     }
   } catch (error) {
-    accountStatus.textContent = `登録失敗: ${error.message}`;
+    authStatus.textContent = `登録失敗: ${error.message}`;
   } finally {
     if (!state.session) setAuthLoading(false);
   }
@@ -408,7 +418,7 @@ async function loginAccount() {
     accountPasswordInput.value = "";
     applyProfile();
   } catch (error) {
-    accountStatus.textContent = `ログイン失敗: ${error.message}`;
+    authStatus.textContent = `ログイン失敗: ${error.message}`;
   } finally {
     if (!state.session) setAuthLoading(false);
   }
@@ -428,6 +438,7 @@ async function logoutAccount() {
   localStorage.removeItem(SESSION_KEY);
   accountEmailInput.value = "";
   accountPasswordInput.value = "";
+  setAuthMode("login");
   applyProfile();
 }
 
@@ -500,11 +511,11 @@ function getCredentials() {
   const email = accountEmailInput.value.trim();
   const password = accountPasswordInput.value;
   if (!email || !password) {
-    accountStatus.textContent = "メールアドレスとパスワードを入力してください";
+    authStatus.textContent = "メールアドレスとパスワードを入力してください";
     return null;
   }
   if (password.length < 6) {
-    accountStatus.textContent = "パスワードは6文字以上です";
+    authStatus.textContent = "パスワードは6文字以上です";
     return null;
   }
   return { email, password };
@@ -513,7 +524,7 @@ function getCredentials() {
 function setAuthLoading(isLoading, message = "") {
   loginAccountButton.disabled = isLoading;
   registerAccountButton.disabled = isLoading;
-  if (message) accountStatus.textContent = message;
+  if (message) authStatus.textContent = message;
 }
 
 async function restoreSession() {

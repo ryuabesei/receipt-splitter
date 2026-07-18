@@ -11,6 +11,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -25,6 +29,61 @@ textarea {
 
 button {
   cursor: pointer;
+}
+
+.auth-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-panel {
+  display: grid;
+  width: min(100%, 440px);
+  gap: 16px;
+  padding: 28px;
+  border: 1px solid #cbd7ea;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.auth-heading {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-heading > p:last-child {
+  margin: 0;
+  color: #687994;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.auth-status {
+  min-height: 19px;
+  color: #244f9e;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.auth-switch {
+  margin: 0;
+  color: #687994;
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-link-button {
+  min-height: auto;
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1f56a8;
+  font-weight: 900;
+  text-decoration: underline;
 }
 
 .app-shell {
@@ -136,19 +195,25 @@ h3 {
   font-size: 28px;
 }
 
-.account-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+.current-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  color: #687994;
+  font-size: 12px;
+  font-weight: 800;
 }
 
-.account-actions #logout-account {
-  grid-column: 2;
+#current-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.account-divider {
-  height: 1px;
-  background: #d4dff0;
+.current-account .text-button {
+  flex: none;
 }
 
 label {

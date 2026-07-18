@@ -7,7 +7,43 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app-shell">
+    <main id="auth-view" class="auth-shell">
+      <section class="auth-panel" aria-label="アカウント登録">
+        <header class="brand">
+          <div class="brand-mark">RS</div>
+          <div>
+            <p>Receipt Splitter</p>
+            <h1>立て替え精算</h1>
+          </div>
+        </header>
+
+        <div class="auth-heading">
+          <p class="eyebrow">Account</p>
+          <h2 id="auth-title">アカウントを作成</h2>
+          <p id="auth-description">精算履歴を保存して、どの端末からでも使えます。</p>
+        </div>
+
+        <label>
+          <span>メールアドレス</span>
+          <input id="account-email" type="email" autocomplete="email" placeholder="you@example.com" />
+        </label>
+        <label>
+          <span>パスワード</span>
+          <input id="account-password" type="password" autocomplete="new-password" minlength="6" placeholder="6文字以上" />
+        </label>
+        <button id="register-account" class="primary-button" type="button">アカウントを作成</button>
+        <button id="login-account" class="primary-button" type="button" hidden>ログイン</button>
+        <span id="auth-status" class="auth-status" role="status"></span>
+        <p class="auth-switch">
+          <span id="register-prompt">すでに登録済みですか？</span>
+          <span id="login-prompt" hidden>はじめて使いますか？</span>
+          <button id="show-login" class="auth-link-button" type="button">ログイン</button>
+          <button id="show-register" class="auth-link-button" type="button" hidden>新規登録</button>
+        </p>
+      </section>
+    </main>
+
+    <main id="app-view" class="app-shell" hidden>
       <aside class="sidebar" aria-label="精算設定">
         <header class="brand">
           <div class="brand-mark">RS</div>
@@ -17,25 +53,15 @@
           </div>
         </header>
 
-        <section class="settings-panel" aria-label="アカウント">
+        <section class="settings-panel" aria-label="精算設定">
           <div>
-            <p class="eyebrow">Account</p>
-            <h2>アカウント</h2>
+            <p class="eyebrow">Settings</p>
+            <h2>精算設定</h2>
           </div>
-          <label>
-            <span>メールアドレス</span>
-            <input id="account-email" type="email" autocomplete="email" placeholder="you@example.com" />
-          </label>
-          <label>
-            <span>パスワード</span>
-            <input id="account-password" type="password" autocomplete="current-password" minlength="6" placeholder="6文字以上" />
-          </label>
-          <div class="account-actions">
-            <button id="login-account" class="secondary-button" type="button">ログイン</button>
-            <button id="register-account" class="text-button" type="button">新規登録</button>
+          <div class="current-account">
+            <span id="current-email"></span>
+            <button id="logout-account" class="text-button" type="button">ログアウト</button>
           </div>
-          <span id="account-status">ログインしてください</span>
-          <div class="account-divider" aria-hidden="true"></div>
           <label>
             <span>精算名</span>
             <input id="account-name" type="text" value="" placeholder="例: 夏の旅行" />
@@ -48,10 +74,8 @@
             <span>相手</span>
             <input id="person-b" type="text" value="相手" />
           </label>
-          <div class="account-actions">
-            <button id="save-account" class="secondary-button" type="button">名前を保存</button>
-            <button id="logout-account" class="text-button" type="button">ログアウト</button>
-          </div>
+          <button id="save-account" class="secondary-button" type="button">名前を保存</button>
+          <span id="account-status">同期済み</span>
         </section>
 
         <section class="result-card" aria-label="支払い結果">
@@ -89,64 +113,33 @@
             <h2>買ったものを入力</h2>
           </div>
           <div class="topbar-actions">
-            <button id="sample-button" class="text-button" type="button">サンプル</button>
             <button id="clear-button" class="icon-button" type="button" aria-label="明細を全削除" title="明細を全削除">×</button>
           </div>
         </header>
 
         <section class="summary-grid" aria-label="合計">
-          <article>
-            <span>合計金額</span>
-            <strong id="grand-total">¥0</strong>
-          </article>
-          <article>
-            <span>共有分</span>
-            <strong id="shared-total">¥0</strong>
-          </article>
-          <article>
-            <span>商品数</span>
-            <strong id="item-count">0</strong>
-          </article>
+          <article><span>合計金額</span><strong id="grand-total">¥0</strong></article>
+          <article><span>共有分</span><strong id="shared-total">¥0</strong></article>
+          <article><span>商品数</span><strong id="item-count">0</strong></article>
         </section>
 
         <section class="split-panel">
           <div class="panel-header">
-            <div>
-              <p class="eyebrow">Entry</p>
-              <h3>商品明細</h3>
-            </div>
+            <div><p class="eyebrow">Entry</p><h3>商品明細</h3></div>
             <button id="add-row" class="primary-button" type="button">+ 商品を追加</button>
           </div>
-
-          <div class="table-head" aria-hidden="true">
-            <span>商品名</span>
-            <span>値段</span>
-            <span>誰のもの</span>
-            <span>払った人</span>
-            <span></span>
-          </div>
+          <div class="table-head" aria-hidden="true"><span>商品名</span><span>値段</span><span>誰のもの</span><span>払った人</span><span></span></div>
           <div id="item-list" class="item-list"></div>
           <p id="empty-items" class="empty-items">商品を追加すると、ここに明細が並びます。</p>
         </section>
 
         <section class="result-panel" aria-label="精算メモ">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Memo</p>
-              <h3>共有用メモ</h3>
-            </div>
-          </div>
+          <div class="panel-header"><div><p class="eyebrow">Memo</p><h3>共有用メモ</h3></div></div>
           <textarea id="settlement-text" rows="10" readonly></textarea>
         </section>
 
         <section class="history-panel" aria-label="過去の精算">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">History</p>
-              <h3>過去の精算</h3>
-            </div>
-            <span id="history-count">0件</span>
-          </div>
+          <div class="panel-header"><div><p class="eyebrow">History</p><h3>過去の精算</h3></div><span id="history-count">0件</span></div>
           <div id="history-list" class="history-list"></div>
           <p id="empty-history" class="empty-items">精算完了すると、ここに履歴が残ります。</p>
         </section>
@@ -158,18 +151,14 @@
         <input class="name-input" type="text" aria-label="商品名" placeholder="例: 豚ばら肉" />
         <input class="price-input" type="number" inputmode="numeric" min="0" aria-label="値段" placeholder="0" />
         <select class="owner-select" aria-label="誰のもの">
-          <option value="shared">2人のもの</option>
-          <option value="a">自分だけ</option>
-          <option value="b">相手だけ</option>
+          <option value="shared">2人のもの</option><option value="a">自分だけ</option><option value="b">相手だけ</option>
         </select>
         <select class="payer-select" aria-label="払った人">
-          <option value="a">自分が払った</option>
-          <option value="b">相手が払った</option>
+          <option value="a">自分が払った</option><option value="b">相手が払った</option>
         </select>
         <button class="delete-row" type="button" aria-label="削除" title="削除">×</button>
       </div>
     </template>
-
     <script src="app.js"></script>
   </body>
 </html>
