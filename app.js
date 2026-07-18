@@ -1,10 +1,14 @@
-const HISTORY_KEY = "receipt-splitter-history";
-const PROFILE_KEY = "receipt-splitter-profile";
+const LEGACY_HISTORY_KEY = "receipt-splitter-history";
+const LEGACY_PROFILE_KEY = "receipt-splitter-profile";
+const ACCOUNTS_KEY = "receipt-splitter-accounts";
+const ACTIVE_ACCOUNT_KEY = "receipt-splitter-active-account";
 
 const state = {
   items: [],
-  history: loadHistory(),
-  profile: loadProfile(),
+  accounts: loadAccounts(),
+  activeAccountId: localStorage.getItem(ACTIVE_ACCOUNT_KEY) || "",
+  history: [],
+  profile: {},
 };
 
 const yenFormatter = new Intl.NumberFormat("ja-JP", {
@@ -19,7 +23,10 @@ const people = {
 };
 
 const accountNameInput = document.querySelector("#account-name");
+const accountSelect = document.querySelector("#account-select");
+const loginAccountButton = document.querySelector("#login-account");
 const saveAccountButton = document.querySelector("#save-account");
+const logoutAccountButton = document.querySelector("#logout-account");
 const accountStatus = document.querySelector("#account-status");
 const itemList = document.querySelector("#item-list");
 const itemTemplate = document.querySelector("#item-template");
@@ -58,11 +65,16 @@ clearButton.addEventListener("click", clearItems);
 sampleButton.addEventListener("click", loadSample);
 copyResultButton.addEventListener("click", copySettlement);
 completeSettlementButton.addEventListener("click", completeSettlement);
+loginAccountButton.addEventListener("click", loginAccount);
 saveAccountButton.addEventListener("click", saveProfile);
+logoutAccountButton.addEventListener("click", logoutAccount);
 accountNameInput.addEventListener("input", handleProfileInput);
 people.a.addEventListener("input", handleProfileInput);
 people.b.addEventListener("input", handleProfileInput);
 
+upgradeLegacyAccount();
+state.profile = getActiveAccount();
+state.history = state.profile.history || [];
 applyProfile();
 addItem({ name: "", price: 0, owner: "shared", payer: "a" });
 
@@ -266,6 +278,11 @@ async function copySettlement() {
 
 function completeSettlement() {
   const totals = calculateSettlement();
+  if (!state.activeAccountId) {
+    copyStatus.textContent = "ログインが必要";
+    accountNameInput.focus();
+    return;
+  }
   if (totals.itemCount === 0) {
     copyStatus.textContent = "商品未入力";
     return;
@@ -339,64 +356,151 @@ function formatHistoryTransfer(entry) {
   return `${entry.people[from]} → ${entry.people[to]} ${formatYen(amount)}`;
 }
 
-function loadHistory() {
+function saveHistory() {
+  if (!state.activeAccountId) return;
+  state.accounts = state.accounts.map((account) =>
+    account.id === state.activeAccountId ? { ...account, history: state.history } : account,
+  );
+  saveAccounts();
+}
+
+function handleProfileInput() {
+  accountStatus.textContent = state.activeAccountId ? "未保存" : "未ログイン";
+  render();
+  if (state.activeAccountId) {
+    saveProfile({ silent: true });
+  }
+}
+
+function applyProfile() {
+  renderAccountOptions();
+  accountNameInput.value = state.profile.accountName || "";
+  people.a.value = state.profile.people?.a || "自分";
+  people.b.value = state.profile.people?.b || "相手";
+  accountSelect.value = state.activeAccountId;
+  accountStatus.textContent = state.activeAccountId ? `ログイン中: ${state.profile.accountName}` : "未ログイン";
+}
+
+function saveProfile(options = {}) {
+  const accountName = accountNameInput.value.trim();
+  if (!accountName) {
+    accountStatus.textContent = "名前を入力";
+    accountNameInput.focus();
+    return;
+  }
+
+  const existingAccount = state.activeAccountId
+    ? state.accounts.find((account) => account.id === state.activeAccountId)
+    : null;
+
+  state.profile = {
+    id: existingAccount?.id || crypto.randomUUID(),
+    accountName,
+    people: {
+      a: getName("a"),
+      b: getName("b"),
+    },
+    history: existingAccount?.history || state.history || [],
+    savedAt: new Date().toISOString(),
+  };
+
+  state.activeAccountId = state.profile.id;
+  state.history = state.profile.history;
+  upsertAccount(state.profile);
+  localStorage.setItem(ACTIVE_ACCOUNT_KEY, state.activeAccountId);
+  renderAccountOptions();
+  accountSelect.value = state.activeAccountId;
+  accountStatus.textContent = options.silent ? "自動保存" : "ログイン中";
+}
+
+function loginAccount() {
+  const account = state.accounts.find((candidate) => candidate.id === accountSelect.value);
+  if (!account) {
+    accountStatus.textContent = "選択してください";
+    return;
+  }
+
+  state.activeAccountId = account.id;
+  state.profile = account;
+  state.history = account.history || [];
+  localStorage.setItem(ACTIVE_ACCOUNT_KEY, account.id);
+  applyProfile();
+  render();
+}
+
+function logoutAccount() {
+  state.activeAccountId = "";
+  state.profile = {};
+  state.history = [];
+  localStorage.removeItem(ACTIVE_ACCOUNT_KEY);
+  accountNameInput.value = "";
+  people.a.value = "自分";
+  people.b.value = "相手";
+  accountSelect.value = "";
+  accountStatus.textContent = "ログアウト";
+  render();
+}
+
+function upsertAccount(account) {
+  const index = state.accounts.findIndex((candidate) => candidate.id === account.id);
+  if (index >= 0) {
+    state.accounts[index] = account;
+  } else {
+    state.accounts.push(account);
+  }
+  saveAccounts();
+}
+
+function renderAccountOptions() {
+  accountSelect.replaceChildren(new Option("アカウントを選択", ""));
+  for (const account of state.accounts) {
+    accountSelect.append(new Option(account.accountName, account.id));
+  }
+}
+
+function getActiveAccount() {
+  return state.accounts.find((account) => account.id === state.activeAccountId) || {};
+}
+
+function loadAccounts() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    const parsed = JSON.parse(localStorage.getItem(ACCOUNTS_KEY) || "[]");
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
     return [];
   }
 }
 
-function saveHistory() {
+function saveAccounts() {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history));
-  } catch (error) {
-    copyStatus.textContent = "履歴保存失敗";
-  }
-}
-
-function handleProfileInput() {
-  accountStatus.textContent = "未保存";
-  render();
-  saveProfile({ silent: true });
-}
-
-function applyProfile() {
-  accountNameInput.value = state.profile.accountName || "";
-  people.a.value = state.profile.people?.a || "自分";
-  people.b.value = state.profile.people?.b || "相手";
-  accountStatus.textContent = state.profile.savedAt ? "登録済み" : "未登録";
-}
-
-function saveProfile(options = {}) {
-  state.profile = {
-    accountName: accountNameInput.value.trim(),
-    people: {
-      a: getName("a"),
-      b: getName("b"),
-    },
-    savedAt: new Date().toISOString(),
-  };
-
-  try {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(state.profile));
-    if (!options.silent) {
-      accountStatus.textContent = "保存済み";
-    } else {
-      accountStatus.textContent = "自動保存";
-    }
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(state.accounts));
   } catch (error) {
     accountStatus.textContent = "保存失敗";
   }
 }
 
-function loadProfile() {
+function upgradeLegacyAccount() {
+  if (state.accounts.length > 0) return;
+
   try {
-    const parsed = JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}");
-    return parsed && typeof parsed === "object" ? parsed : {};
+    const legacyProfile = JSON.parse(localStorage.getItem(LEGACY_PROFILE_KEY) || "{}");
+    const legacyHistory = JSON.parse(localStorage.getItem(LEGACY_HISTORY_KEY) || "[]");
+    if (!legacyProfile.accountName && !legacyProfile.people && !Array.isArray(legacyHistory)) return;
+
+    const account = {
+      id: crypto.randomUUID(),
+      accountName: legacyProfile.accountName || "既存アカウント",
+      people: legacyProfile.people || { a: "自分", b: "相手" },
+      history: Array.isArray(legacyHistory) ? legacyHistory : [],
+      savedAt: legacyProfile.savedAt || new Date().toISOString(),
+    };
+
+    state.accounts = [account];
+    state.activeAccountId = account.id;
+    saveAccounts();
+    localStorage.setItem(ACTIVE_ACCOUNT_KEY, account.id);
   } catch (error) {
-    return {};
+    state.accounts = [];
   }
 }
 

@@ -27,6 +27,12 @@
             <input id="account-name" type="text" value="" placeholder="例: 旅行用" />
           </label>
           <label>
+            <span>既存アカウントでログイン</span>
+            <select id="account-select" aria-label="既存アカウント">
+              <option value="">アカウントを選択</option>
+            </select>
+          </label>
+          <label>
             <span>自分</span>
             <input id="person-a" type="text" value="自分" />
           </label>
@@ -34,7 +40,11 @@
             <span>相手</span>
             <input id="person-b" type="text" value="相手" />
           </label>
-          <button id="save-account" class="secondary-button" type="button">登録 / 保存</button>
+          <div class="account-actions">
+            <button id="login-account" class="secondary-button" type="button">ログイン</button>
+            <button id="save-account" class="secondary-button" type="button">登録 / 保存</button>
+            <button id="logout-account" class="text-button" type="button">ログアウト</button>
+          </div>
           <span id="account-status">未登録</span>
         </section>
 
