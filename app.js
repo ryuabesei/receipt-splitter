@@ -9,6 +9,8 @@ const state = {
   session: null,
   authMode: "register",
   settingsOpen: false,
+  lastSettlementKey: "",
+  celebrationTimer: null,
 };
 
 const yenFormatter = new Intl.NumberFormat("ja-JP", {
@@ -63,6 +65,8 @@ const aPaid = document.querySelector("#a-paid");
 const bPaid = document.querySelector("#b-paid");
 const historyList = document.querySelector("#history-list");
 const historyCount = document.querySelector("#history-count");
+const resultCard = document.querySelector(".result-card");
+const celebration = document.querySelector("#celebration");
 
 addRowButton.addEventListener("click", () => addItem());
 clearButton.addEventListener("click", clearItems);
@@ -195,6 +199,13 @@ function renderTotals() {
     settlementMain.textContent = `${getName(from)} → ${getName(to)} ${formatYen(amount)}`;
     settlementSub.textContent = `${getName(from)}が${getName(to)}に支払えば精算完了です。`;
   }
+  const settlementKey = `${totals.grandTotal}-${totals.sharedTotal}-${from}-${to}-${amount}`;
+  if (state.lastSettlementKey && state.lastSettlementKey !== settlementKey) {
+    resultCard.classList.remove("is-updated");
+    void resultCard.offsetWidth;
+    resultCard.classList.add("is-updated");
+  }
+  state.lastSettlementKey = settlementKey;
   settlementText.value = buildSettlementText(totals);
 }
 
@@ -310,11 +321,26 @@ async function completeSettlement() {
     state.items = [];
     addItem({ name: "", price: 0, owner: "shared", payer: "a" });
     copyStatus.textContent = "精算を保存";
+    showCelebration();
   } catch (error) {
     copyStatus.textContent = `保存失敗: ${error.message}`;
   } finally {
     renderTotals();
   }
+}
+
+function showCelebration() {
+  window.clearTimeout(state.celebrationTimer);
+  celebration.hidden = false;
+  celebration.classList.remove("is-visible");
+  void celebration.offsetWidth;
+  celebration.classList.add("is-visible");
+  state.celebrationTimer = window.setTimeout(() => {
+    celebration.classList.remove("is-visible");
+    window.setTimeout(() => {
+      celebration.hidden = true;
+    }, 220);
+  }, 2200);
 }
 
 function renderHistory() {
