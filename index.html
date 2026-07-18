@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Receipt Splitter</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar" aria-label="精算設定">
+        <header class="brand">
+          <div class="brand-mark">RS</div>
+          <div>
+            <p>Receipt Splitter</p>
+            <h1>立て替え精算</h1>
+          </div>
+        </header>
+
+        <section class="settings-panel" aria-label="2人の名前">
+          <div>
+            <p class="eyebrow">People</p>
+            <h2>2人の名前</h2>
+          </div>
+          <label>
+            <span>自分</span>
+            <input id="person-a" type="text" value="自分" />
+          </label>
+          <label>
+            <span>相手</span>
+            <input id="person-b" type="text" value="相手" />
+          </label>
+        </section>
+
+        <section class="result-card" aria-label="支払い結果">
+          <p class="eyebrow">Settlement</p>
+          <h2 id="settlement-main">精算なし</h2>
+          <p id="settlement-sub">商品を入力すると、自動で計算します。</p>
+        </section>
+
+        <section class="balance-panel" aria-label="内訳">
+          <article>
+            <span id="person-a-label">自分</span>
+            <dl>
+              <div><dt>負担</dt><dd id="a-owed">¥0</dd></div>
+              <div><dt>支払済</dt><dd id="a-paid">¥0</dd></div>
+            </dl>
+          </article>
+          <article>
+            <span id="person-b-label">相手</span>
+            <dl>
+              <div><dt>負担</dt><dd id="b-owed">¥0</dd></div>
+              <div><dt>支払済</dt><dd id="b-paid">¥0</dd></div>
+            </dl>
+          </article>
+        </section>
+
+        <button id="copy-result" class="secondary-button" type="button">結果をコピー</button>
+        <span id="copy-status">未コピー</span>
+      </aside>
+
+      <section class="workspace" aria-label="購入品入力">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Items</p>
+            <h2>買ったものを入力</h2>
+          </div>
+          <div class="topbar-actions">
+            <button id="sample-button" class="text-button" type="button">サンプル</button>
+            <button id="clear-button" class="icon-button" type="button" aria-label="明細を全削除" title="明細を全削除">×</button>
+          </div>
+        </header>
+
+        <section class="summary-grid" aria-label="合計">
+          <article>
+            <span>合計金額</span>
+            <strong id="grand-total">¥0</strong>
+          </article>
+          <article>
+            <span>共有分</span>
+            <strong id="shared-total">¥0</strong>
+          </article>
+          <article>
+            <span>商品数</span>
+            <strong id="item-count">0</strong>
+          </article>
+        </section>
+
+        <section class="split-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Entry</p>
+              <h3>商品明細</h3>
+            </div>
+            <button id="add-row" class="primary-button" type="button">+ 商品を追加</button>
+          </div>
+
+          <div class="table-head" aria-hidden="true">
+            <span>商品名</span>
+            <span>値段</span>
+            <span>誰のもの</span>
+            <span>払った人</span>
+            <span></span>
+          </div>
+          <div id="item-list" class="item-list"></div>
+          <p id="empty-items" class="empty-items">商品を追加すると、ここに明細が並びます。</p>
+        </section>
+
+        <section class="result-panel" aria-label="精算メモ">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Memo</p>
+              <h3>共有用メモ</h3>
+            </div>
+          </div>
+          <textarea id="settlement-text" rows="10" readonly></textarea>
+        </section>
+      </section>
+    </main>
+
+    <template id="item-template">
+      <div class="item-row">
+        <input class="name-input" type="text" aria-label="商品名" placeholder="例: 豚ばら肉" />
+        <input class="price-input" type="number" inputmode="numeric" min="0" aria-label="値段" placeholder="0" />
+        <select class="owner-select" aria-label="誰のもの">
+          <option value="shared">2人のもの</option>
+          <option value="a">自分だけ</option>
+          <option value="b">相手だけ</option>
+        </select>
+        <select class="payer-select" aria-label="払った人">
+          <option value="a">自分が払った</option>
+          <option value="b">相手が払った</option>
+        </select>
+        <button class="delete-row" type="button" aria-label="削除" title="削除">×</button>
+      </div>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
