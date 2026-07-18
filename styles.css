@@ -45,7 +45,7 @@ button {
   gap: 16px;
   padding: 28px;
   border: 1px solid #c9d8ef;
-  border-top: 6px solid #f16f61;
+  border-top: 6px solid #2d73c9;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 18px 42px rgba(29, 61, 110, 0.12);
@@ -84,7 +84,7 @@ button {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #df5447;
+  color: #1f69c7;
   font-weight: 900;
   text-decoration: underline;
 }
@@ -144,7 +144,7 @@ button {
   background: #173866;
   color: #ffffff;
   font-weight: 900;
-  box-shadow: 4px 4px 0 #f7c85e;
+  box-shadow: 4px 4px 0 #77afe8;
   animation: brand-arrive 520ms cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
@@ -279,7 +279,7 @@ input:focus,
 select:focus,
 textarea:focus,
 button:focus-visible {
-  outline: 3px solid rgba(241, 111, 97, 0.28);
+  outline: 3px solid rgba(45, 115, 201, 0.28);
   outline-offset: 1px;
 }
 
@@ -356,18 +356,18 @@ button:focus-visible {
 }
 
 .summary-grid article:nth-child(1) {
-  border-color: #f0ca63;
-  background: #fff8dc;
+  border-color: #94bee9;
+  background: #e9f3ff;
 }
 
 .summary-grid article:nth-child(2) {
-  border-color: #78c7b6;
-  background: #e8faf4;
+  border-color: #78aee4;
+  background: #e3f0ff;
 }
 
 .summary-grid article:nth-child(3) {
-  border-color: #f0a49c;
-  background: #fff0ee;
+  border-color: #b0cef0;
+  background: #f1f7ff;
 }
 
 .summary-grid span {
@@ -410,7 +410,7 @@ button:focus-visible {
   min-height: 54px;
   padding: 8px;
   border: 1px solid #d8e1ef;
-  border-left: 5px solid #f7c85e;
+  border-left: 5px solid #276cc5;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 3px 8px rgba(29, 61, 110, 0.05);
@@ -419,11 +419,11 @@ button:focus-visible {
 }
 
 .item-row:nth-child(3n + 2) {
-  border-left-color: #72c6b3;
+  border-left-color: #5b9fe5;
 }
 
 .item-row:nth-child(3n) {
-  border-left-color: #f18a7d;
+  border-left-color: #153867;
 }
 
 .item-row:hover {
@@ -505,9 +505,9 @@ button:focus-visible {
 .primary-button {
   border: 0;
   padding: 0 14px;
-  background: #df5b4d;
+  background: #1f69c7;
   color: #ffffff;
-  box-shadow: 0 4px 0 #b9443a;
+  box-shadow: 0 4px 0 #124789;
 }
 
 .secondary-button {
@@ -535,10 +535,10 @@ button:focus-visible {
 .delete-row {
   width: 34px;
   height: 34px;
-  border: 1px solid #f0b0aa;
+  border: 1px solid #a9caeb;
   border-radius: 8px;
   background: #ffffff;
-  color: #d34b40;
+  color: #1f69c7;
   font-weight: 900;
 }
 
@@ -552,8 +552,8 @@ button:not(:disabled):hover {
 }
 
 .primary-button:not(:disabled):hover {
-  background: #eb6b5c;
-  box-shadow: 0 6px 0 #b9443a;
+  background: #317bd9;
+  box-shadow: 0 6px 0 #124789;
 }
 
 .secondary-button:not(:disabled):hover {
@@ -590,8 +590,8 @@ button:not(:disabled):active {
   padding: 12px 16px;
   border: 2px solid #173866;
   border-radius: 8px;
-  background: #fff8dc;
-  box-shadow: 6px 6px 0 #f16f61;
+  background: #e9f3ff;
+  box-shadow: 6px 6px 0 #4b92df;
   color: #173866;
   opacity: 0;
   transform: translateY(-18px) rotate(-2deg);
@@ -607,8 +607,8 @@ button:not(:disabled):active {
   height: 34px;
   place-items: center;
   border-radius: 8px;
-  background: #72c6b3;
-  color: #113a36;
+  background: #4b92df;
+  color: #ffffff;
   font-size: 11px;
   font-weight: 950;
 }
