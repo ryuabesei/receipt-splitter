@@ -435,6 +435,7 @@ button:focus-visible {
 
 .item-row {
   min-height: 54px;
+  align-items: start;
   padding: 8px;
   border: 1px solid #d8e1ef;
   border-left: 5px solid #276cc5;
