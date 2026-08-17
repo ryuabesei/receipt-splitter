@@ -97,7 +97,7 @@ async function initializeApp() {
 }
 
 function addItem(item = {}) {
-  state.items.push({
+  state.items.unshift({
     id: crypto.randomUUID(),
     name: item.name || "",
     price: Number(item.price) || 0,
@@ -105,7 +105,7 @@ function addItem(item = {}) {
     payer: item.payer || "a",
   });
   render();
-  itemList.lastElementChild?.querySelector(".name-input")?.focus();
+  itemList.firstElementChild?.querySelector(".name-input")?.focus();
 }
 
 function clearItems() {
