@@ -268,15 +268,26 @@ function calculateSettlement() {
 
 function getItemTotal(item) {
   const price = Math.max(0, Math.round(Number(item.price) || 0));
-  return item.taxMode === "excluded" ? Math.round(price * 1.1) : price;
+  return Math.round(price * (1 + getTaxRate(item)));
+}
+
+function getTaxRate(item) {
+  if (item.taxMode === "excluded") return 0.1;
+  if (item.taxMode === "reduced") return 0.08;
+  return 0;
+}
+
+function getTaxLabel(item) {
+  if (item.taxMode === "excluded") return "税抜 +10%";
+  if (item.taxMode === "reduced") return "税抜 +8%";
+  return "税込";
 }
 
 function buildSettlementText(totals) {
   const itemLines = state.items.length
     ? state.items.map((item) => {
         const owner = item.owner === "shared" ? "2人" : getName(item.owner);
-        const tax = item.taxMode === "excluded" ? "税抜 +10%" : "税込";
-        return `・${item.name || "商品名未入力"} ${formatYen(getItemTotal(item))} (${tax}) / ${owner} / 支払い:${getName(item.payer)}`;
+        return `・${item.name || "商品名未入力"} ${formatYen(getItemTotal(item))} (${getTaxLabel(item)}) / ${owner} / 支払い:${getName(item.payer)}`;
       })
     : ["・商品未入力"];
   const transfer =
