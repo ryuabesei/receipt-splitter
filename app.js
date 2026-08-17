@@ -11,6 +11,8 @@ const state = {
   settingsOpen: false,
   lastSettlementKey: "",
   celebrationTimer: null,
+  editingSettlementId: null,
+  draftItemsBeforeEdit: null,
 };
 
 const yenFormatter = new Intl.NumberFormat("ja-JP", {
@@ -67,11 +69,15 @@ const historyList = document.querySelector("#history-list");
 const historyCount = document.querySelector("#history-count");
 const resultCard = document.querySelector(".result-card");
 const celebration = document.querySelector("#celebration");
+const celebrationText = document.querySelector("#celebration-text");
+const editingBanner = document.querySelector("#editing-banner");
+const cancelEditButton = document.querySelector("#cancel-edit");
 
 addRowButton.addEventListener("click", () => addItem());
 clearButton.addEventListener("click", clearItems);
 copyResultButton.addEventListener("click", copySettlement);
 completeSettlementButton.addEventListener("click", completeSettlement);
+cancelEditButton.addEventListener("click", cancelHistoryEdit);
 loginAccountButton.addEventListener("click", loginAccount);
 registerAccountButton.addEventListener("click", registerAccount);
 showLoginButton.addEventListener("click", () => setAuthMode("login"));
@@ -121,6 +127,7 @@ function render() {
   updatePersonLabels();
   renderTotals();
   renderHistory();
+  renderEditingState();
 }
 
 function createItemRow(item) {
@@ -296,8 +303,11 @@ async function completeSettlement() {
 
   completeSettlementButton.disabled = true;
   copyStatus.textContent = "保存中...";
+  const editingEntry = state.editingSettlementId
+    ? state.history.find((entry) => entry.id === state.editingSettlementId)
+    : null;
   const historyItem = {
-    createdAt: new Date().toISOString(),
+    createdAt: editingEntry?.createdAt || new Date().toISOString(),
     people: { a: getName("a"), b: getName("b") },
     items: state.items
       .filter((item) => item.name.trim() || Number(item.price) > 0)
@@ -312,16 +322,33 @@ async function completeSettlement() {
   };
 
   try {
-    const rows = await supabaseRequest("/rest/v1/settlements", {
-      method: "POST",
-      headers: { Prefer: "return=representation" },
-      body: JSON.stringify([{ data: historyItem }]),
-    });
-    state.history = [{ ...historyItem, id: rows[0].id, createdAt: rows[0].created_at }, ...state.history];
+    let savedEntry;
+    if (editingEntry) {
+      const rows = await supabaseRequest(`/rest/v1/settlements?id=eq.${encodeURIComponent(editingEntry.id)}`, {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ data: historyItem }),
+      });
+      if (!rows[0]) {
+        throw new Error("履歴を更新できませんでした。Supabase の更新権限を確認してください。");
+      }
+      savedEntry = { ...historyItem, id: rows[0].id, createdAt: rows[0].created_at };
+      state.history = state.history.map((entry) => (entry.id === savedEntry.id ? savedEntry : entry));
+    } else {
+      const rows = await supabaseRequest("/rest/v1/settlements", {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify([{ data: historyItem }]),
+      });
+      savedEntry = { ...historyItem, id: rows[0].id, createdAt: rows[0].created_at };
+      state.history = [savedEntry, ...state.history];
+    }
+    state.editingSettlementId = null;
+    state.draftItemsBeforeEdit = null;
     state.items = [];
     addItem({ name: "", price: 0, owner: "shared", payer: "a" });
-    copyStatus.textContent = "精算を保存";
-    showCelebration();
+    copyStatus.textContent = editingEntry ? "変更を保存" : "精算を保存";
+    showCelebration(editingEntry ? "変更を保存しました" : "精算を記録しました");
   } catch (error) {
     copyStatus.textContent = `保存失敗: ${error.message}`;
   } finally {
@@ -329,8 +356,9 @@ async function completeSettlement() {
   }
 }
 
-function showCelebration() {
+function showCelebration(message) {
   window.clearTimeout(state.celebrationTimer);
+  celebrationText.textContent = message;
   celebration.hidden = false;
   celebration.classList.remove("is-visible");
   void celebration.offsetWidth;
@@ -358,13 +386,60 @@ function createHistoryEntry(entry) {
   date.textContent = formatDate(entry.createdAt);
   const result = document.createElement("strong");
   result.textContent = formatHistoryTransfer(entry);
-  title.append(date, result);
+  const actions = document.createElement("div");
+  actions.className = "history-entry-actions";
+  const editButton = document.createElement("button");
+  editButton.className = "text-button history-edit-button";
+  editButton.type = "button";
+  editButton.textContent = state.editingSettlementId === entry.id ? "編集中" : "編集";
+  editButton.disabled = state.editingSettlementId === entry.id;
+  editButton.addEventListener("click", () => editHistoryEntry(entry));
+  actions.append(result, editButton);
+  title.append(date, actions);
   const details = document.createElement("p");
   details.textContent = `${entry.people.a} / ${entry.people.b} ・ ${formatYen(entry.totals.grandTotal)} ・ ${entry.items.length}件`;
   const itemSummary = document.createElement("small");
   itemSummary.textContent = entry.items.slice(0, 3).map((item) => item.name).join("、") || "商品なし";
   article.append(title, details, itemSummary);
   return article;
+}
+
+function renderEditingState() {
+  const editing = Boolean(state.editingSettlementId);
+  editingBanner.hidden = !editing;
+  completeSettlementButton.textContent = editing ? "変更を保存" : "精算完了";
+}
+
+function editHistoryEntry(entry) {
+  if (!state.editingSettlementId) {
+    state.draftItemsBeforeEdit = state.items.map((item) => ({ ...item }));
+  }
+  state.editingSettlementId = entry.id;
+  state.items = entry.items.map((item) => ({
+    id: crypto.randomUUID(),
+    name: item.name,
+    price: Number(item.price) || 0,
+    owner: item.owner,
+    payer: item.payer,
+  }));
+  if (state.items.length === 0) {
+    state.items = [{ id: crypto.randomUUID(), name: "", price: 0, owner: "shared", payer: "a" }];
+  }
+  copyStatus.textContent = "過去の精算を編集中";
+  render();
+  document.querySelector(".topbar")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function cancelHistoryEdit() {
+  state.items = state.draftItemsBeforeEdit?.map((item) => ({ ...item })) || [];
+  state.draftItemsBeforeEdit = null;
+  state.editingSettlementId = null;
+  copyStatus.textContent = "編集をやめました";
+  if (state.items.length === 0) {
+    addItem({ name: "", price: 0, owner: "shared", payer: "a" });
+    return;
+  }
+  render();
 }
 
 function formatHistoryTransfer(entry) {

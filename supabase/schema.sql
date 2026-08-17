@@ -36,3 +36,8 @@ create policy "Users can read their settlements"
 create policy "Users can create their settlements"
   on public.settlements for insert
   with check (auth.uid() = user_id);
+
+create policy "Users can update their settlements"
+  on public.settlements for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);

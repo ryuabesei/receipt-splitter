@@ -340,6 +340,21 @@ button:focus-visible {
   gap: 8px;
 }
 
+.editing-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 1px solid #94bee9;
+  border-left: 5px solid #1f69c7;
+  border-radius: 8px;
+  background: #e9f3ff;
+  color: #173866;
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -478,6 +493,19 @@ button:focus-visible {
 .history-entry-title strong {
   color: #0f2f63;
   text-align: right;
+}
+
+.history-entry-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.history-edit-button {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
 }
 
 .history-entry p {
@@ -661,6 +689,11 @@ button:not(:disabled):active {
   }
 
   .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .editing-banner {
     align-items: flex-start;
     flex-direction: column;
   }

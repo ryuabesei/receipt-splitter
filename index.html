@@ -120,6 +120,11 @@
           </div>
         </header>
 
+        <section id="editing-banner" class="editing-banner" aria-label="過去の精算を編集中" hidden>
+          <span>過去の精算を編集しています</span>
+          <button id="cancel-edit" class="text-button" type="button">編集をやめる</button>
+        </section>
+
         <section class="split-panel">
           <div class="panel-header">
             <div><p class="eyebrow">Entry</p><h3>商品明細</h3></div>
@@ -165,7 +170,7 @@
     <div id="celebration" class="celebration" role="status" aria-live="polite" hidden>
       <div class="celebration-ticket">
         <span class="celebration-mark" aria-hidden="true">OK</span>
-        <strong>精算を記録しました</strong>
+        <strong id="celebration-text">精算を記録しました</strong>
       </div>
     </div>
     <script src="app.js"></script>
