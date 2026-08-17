@@ -130,7 +130,7 @@
             <div><p class="eyebrow">Entry</p><h3>商品明細</h3></div>
             <button id="add-row" class="primary-button" type="button">+ 商品を追加</button>
           </div>
-          <div class="table-head" aria-hidden="true"><span>商品名</span><span>値段</span><span>誰のもの</span><span>払った人</span><span></span></div>
+          <div class="table-head" aria-hidden="true"><span>商品名</span><span>値段</span><span>消費税</span><span>誰のもの</span><span>払った人</span><span></span></div>
           <div id="item-list" class="item-list"></div>
           <p id="empty-items" class="empty-items">商品を追加すると、ここに明細が並びます。</p>
         </section>
@@ -157,7 +157,14 @@
     <template id="item-template">
       <div class="item-row">
         <input class="name-input" type="text" aria-label="商品名" placeholder="例: 豚ばら肉" />
-        <input class="price-input" type="number" inputmode="numeric" min="0" aria-label="値段" placeholder="0" />
+        <div class="price-field">
+          <input class="price-input" type="number" inputmode="numeric" min="0" aria-label="値段" placeholder="0" />
+          <span class="tax-preview" aria-live="polite">税込 ¥0</span>
+        </div>
+        <select class="tax-select" aria-label="消費税">
+          <option value="included">税込（そのまま）</option>
+          <option value="excluded">税抜（+10%）</option>
+        </select>
         <select class="owner-select" aria-label="誰のもの">
           <option value="shared">2人のもの</option><option value="a">自分だけ</option><option value="b">相手だけ</option>
         </select>

@@ -405,7 +405,7 @@ button:focus-visible {
 .table-head,
 .item-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1.4fr) 120px minmax(130px, 0.9fr) minmax(130px, 0.9fr) 42px;
+  grid-template-columns: minmax(150px, 1.3fr) 120px minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) 42px;
   gap: 8px;
   align-items: center;
 }
@@ -419,6 +419,18 @@ button:focus-visible {
 .item-list {
   display: grid;
   gap: 8px;
+}
+
+.price-field {
+  display: grid;
+  gap: 3px;
+}
+
+.tax-preview {
+  min-height: 16px;
+  color: #52729a;
+  font-size: 11px;
+  font-weight: 850;
 }
 
 .item-row {
@@ -664,7 +676,7 @@ button:not(:disabled):active {
   100% { opacity: 0; transform: translateY(-10px) rotate(1deg); }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1120px) {
   .app-shell {
     grid-template-areas:
       "workspace"

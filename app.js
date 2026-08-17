@@ -107,6 +107,7 @@ function addItem(item = {}) {
     id: crypto.randomUUID(),
     name: item.name || "",
     price: Number(item.price) || 0,
+    taxMode: item.taxMode || "included",
     owner: item.owner || "shared",
     payer: item.payer || "a",
   });
@@ -134,14 +135,18 @@ function createItemRow(item) {
   const row = itemTemplate.content.firstElementChild.cloneNode(true);
   const nameInput = row.querySelector(".name-input");
   const priceInput = row.querySelector(".price-input");
+  const taxSelect = row.querySelector(".tax-select");
+  const taxPreview = row.querySelector(".tax-preview");
   const ownerSelect = row.querySelector(".owner-select");
   const payerSelect = row.querySelector(".payer-select");
   const deleteButton = row.querySelector(".delete-row");
 
   nameInput.value = item.name;
   priceInput.value = item.price || "";
+  taxSelect.value = item.taxMode;
   ownerSelect.value = item.owner;
   payerSelect.value = item.payer;
+  updateTaxPreview(taxPreview, item);
   syncSelectLabels(ownerSelect, payerSelect);
 
   nameInput.addEventListener("input", () => {
@@ -150,6 +155,12 @@ function createItemRow(item) {
   });
   priceInput.addEventListener("input", () => {
     item.price = Number(priceInput.value) || 0;
+    updateTaxPreview(taxPreview, item);
+    renderTotals();
+  });
+  taxSelect.addEventListener("change", () => {
+    item.taxMode = taxSelect.value;
+    updateTaxPreview(taxPreview, item);
     renderTotals();
   });
   ownerSelect.addEventListener("change", () => {
@@ -165,6 +176,10 @@ function createItemRow(item) {
     render();
   });
   return row;
+}
+
+function updateTaxPreview(preview, item) {
+  preview.textContent = `税込 ${formatYen(getItemTotal(item))}`;
 }
 
 function updatePersonLabels() {
@@ -227,8 +242,8 @@ function calculateSettlement() {
   };
 
   for (const item of state.items) {
-    const price = Math.max(0, Math.round(Number(item.price) || 0));
-    if (item.name.trim() || price > 0) totals.itemCount += 1;
+    const price = getItemTotal(item);
+    if (item.name.trim() || Number(item.price) > 0) totals.itemCount += 1;
     totals.grandTotal += price;
     totals.paid[item.payer] += price;
     if (item.owner === "shared") {
@@ -251,11 +266,17 @@ function calculateSettlement() {
   return totals;
 }
 
+function getItemTotal(item) {
+  const price = Math.max(0, Math.round(Number(item.price) || 0));
+  return item.taxMode === "excluded" ? Math.round(price * 1.1) : price;
+}
+
 function buildSettlementText(totals) {
   const itemLines = state.items.length
     ? state.items.map((item) => {
         const owner = item.owner === "shared" ? "2人" : getName(item.owner);
-        return `・${item.name || "商品名未入力"} ${formatYen(item.price)} / ${owner} / 支払い:${getName(item.payer)}`;
+        const tax = item.taxMode === "excluded" ? "税抜 +10%" : "税込";
+        return `・${item.name || "商品名未入力"} ${formatYen(getItemTotal(item))} (${tax}) / ${owner} / 支払い:${getName(item.payer)}`;
       })
     : ["・商品未入力"];
   const transfer =
@@ -314,6 +335,7 @@ async function completeSettlement() {
       .map((item) => ({
         name: item.name.trim() || "商品名未入力",
         price: Math.max(0, Math.round(Number(item.price) || 0)),
+        taxMode: item.taxMode,
         owner: item.owner,
         payer: item.payer,
       })),
@@ -419,6 +441,7 @@ function editHistoryEntry(entry) {
     id: crypto.randomUUID(),
     name: item.name,
     price: Number(item.price) || 0,
+    taxMode: item.taxMode || "included",
     owner: item.owner,
     payer: item.payer,
   }));
