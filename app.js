@@ -1,6 +1,7 @@
 const SUPABASE_URL = "https://omperlnpvpjwnryboyob.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_gYQG_iVrP4AfGqPLQJVRFQ_jCQ7ELvc";
 const SESSION_KEY = "receipt-splitter-supabase-session";
+const SOUND_ENABLED_KEY = "receipt-splitter-sound-enabled";
 
 const state = {
   items: [],
@@ -11,6 +12,9 @@ const state = {
   settingsOpen: false,
   lastSettlementKey: "",
   celebrationTimer: null,
+  confettiTimer: null,
+  soundEnabled: localStorage.getItem(SOUND_ENABLED_KEY) !== "false",
+  audioContext: null,
   editingSettlementId: null,
   draftItemsBeforeEdit: null,
 };
@@ -46,6 +50,7 @@ const settingsPanel = document.querySelector("#settings-panel");
 const saveAccountButton = document.querySelector("#save-account");
 const logoutAccountButton = document.querySelector("#logout-account");
 const accountStatus = document.querySelector("#account-status");
+const soundEnabledInput = document.querySelector("#sound-enabled");
 const itemList = document.querySelector("#item-list");
 const itemTemplate = document.querySelector("#item-template");
 const addRowButton = document.querySelector("#add-row");
@@ -72,12 +77,14 @@ const celebration = document.querySelector("#celebration");
 const celebrationText = document.querySelector("#celebration-text");
 const editingBanner = document.querySelector("#editing-banner");
 const cancelEditButton = document.querySelector("#cancel-edit");
+const confetti = document.querySelector("#confetti");
 
 addRowButton.addEventListener("click", () => addItem());
 clearButton.addEventListener("click", clearItems);
 copyResultButton.addEventListener("click", copySettlement);
 completeSettlementButton.addEventListener("click", completeSettlement);
 cancelEditButton.addEventListener("click", cancelHistoryEdit);
+soundEnabledInput.addEventListener("change", handleSoundPreference);
 loginAccountButton.addEventListener("click", loginAccount);
 registerAccountButton.addEventListener("click", registerAccount);
 showLoginButton.addEventListener("click", () => setAuthMode("login"));
@@ -333,6 +340,7 @@ async function completeSettlement() {
     return;
   }
 
+  prepareCelebrationAudio();
   completeSettlementButton.disabled = true;
   copyStatus.textContent = "保存中...";
   const editingEntry = state.editingSettlementId
@@ -396,12 +404,71 @@ function showCelebration(message) {
   celebration.classList.remove("is-visible");
   void celebration.offsetWidth;
   celebration.classList.add("is-visible");
+  resultCard.classList.remove("is-celebrating");
+  void resultCard.offsetWidth;
+  resultCard.classList.add("is-celebrating");
+  burstConfetti();
+  playCelebrationSound();
   state.celebrationTimer = window.setTimeout(() => {
     celebration.classList.remove("is-visible");
     window.setTimeout(() => {
       celebration.hidden = true;
     }, 220);
   }, 2200);
+}
+
+function handleSoundPreference() {
+  state.soundEnabled = soundEnabledInput.checked;
+  localStorage.setItem(SOUND_ENABLED_KEY, String(state.soundEnabled));
+}
+
+function prepareCelebrationAudio() {
+  if (!state.soundEnabled) return;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+  state.audioContext ||= new AudioContextClass();
+  if (state.audioContext.state === "suspended") {
+    state.audioContext.resume().catch(() => {});
+  }
+}
+
+function playCelebrationSound() {
+  const context = state.audioContext;
+  if (!state.soundEnabled || !context || context.state !== "running") return;
+
+  const notes = [523.25, 659.25, 783.99, 1046.5];
+  const start = context.currentTime + 0.03;
+  notes.forEach((frequency, index) => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const noteStart = start + index * 0.1;
+    const noteEnd = noteStart + 0.18;
+    oscillator.type = index === notes.length - 1 ? "sine" : "triangle";
+    oscillator.frequency.setValueAtTime(frequency, noteStart);
+    gain.gain.setValueAtTime(0.0001, noteStart);
+    gain.gain.exponentialRampToValueAtTime(0.075, noteStart + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, noteEnd);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start(noteStart);
+    oscillator.stop(noteEnd + 0.02);
+  });
+}
+
+function burstConfetti() {
+  window.clearTimeout(state.confettiTimer);
+  confetti.replaceChildren();
+  const colors = ["#173866", "#276cc5", "#5b9fe5", "#b8d8f5", "#ffffff"];
+  for (let index = 0; index < 28; index += 1) {
+    const piece = document.createElement("span");
+    piece.className = "confetti-piece";
+    piece.style.setProperty("--x", `${Math.round((Math.random() - 0.5) * 520)}px`);
+    piece.style.setProperty("--y", `${120 + Math.round(Math.random() * 220)}px`);
+    piece.style.setProperty("--r", `${Math.round((Math.random() - 0.5) * 540)}deg`);
+    piece.style.setProperty("--delay", `${Math.round(Math.random() * 80)}ms`);
+    piece.style.backgroundColor = colors[index % colors.length];
+    confetti.append(piece);
+  }
+  state.confettiTimer = window.setTimeout(() => confetti.replaceChildren(), 1500);
 }
 
 function renderHistory() {
@@ -510,6 +577,7 @@ function renderSettingsPanel() {
   settingsToggleButton.setAttribute("aria-expanded", String(state.settingsOpen));
   settingsToggleButton.setAttribute("aria-label", state.settingsOpen ? "精算設定を閉じる" : "精算設定を開く");
   settingsToggleButton.title = state.settingsOpen ? "精算設定を閉じる" : "精算設定";
+  soundEnabledInput.checked = state.soundEnabled;
 }
 
 function setAuthMode(mode) {

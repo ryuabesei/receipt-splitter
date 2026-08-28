@@ -77,6 +77,10 @@
             <span>相手</span>
             <input id="person-b" type="text" value="相手" />
           </label>
+          <label class="sound-toggle">
+            <span>精算完了の音</span>
+            <input id="sound-enabled" type="checkbox" role="switch" checked />
+          </label>
           <button id="save-account" class="secondary-button" type="button">名前を保存</button>
           <span id="account-status">同期済み</span>
         </section>
@@ -181,6 +185,7 @@
         <strong id="celebration-text">精算を記録しました</strong>
       </div>
     </div>
+    <div id="confetti" class="confetti" aria-hidden="true"></div>
     <script src="app.js"></script>
   </body>
 </html>
