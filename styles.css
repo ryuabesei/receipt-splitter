@@ -561,6 +561,7 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -568,6 +569,19 @@ button:focus-visible {
   min-height: 32px;
   padding: 0 10px;
   font-size: 12px;
+}
+
+.history-delete-button {
+  min-height: 32px;
+  padding: 0 10px;
+  border-color: #e0b7c0;
+  color: #9d2640;
+  font-size: 12px;
+}
+
+.history-delete-button:not(:disabled):hover {
+  border-color: #c84a62;
+  background: #fff4f6;
 }
 
 .history-entry p {

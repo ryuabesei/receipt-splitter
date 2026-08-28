@@ -492,9 +492,15 @@ function createHistoryEntry(entry) {
   editButton.className = "text-button history-edit-button";
   editButton.type = "button";
   editButton.textContent = state.editingSettlementId === entry.id ? "編集中" : "編集";
-  editButton.disabled = state.editingSettlementId === entry.id;
+  editButton.disabled = Boolean(state.editingSettlementId);
   editButton.addEventListener("click", () => editHistoryEntry(entry));
-  actions.append(result, editButton);
+  const deleteButton = document.createElement("button");
+  deleteButton.className = "text-button history-delete-button";
+  deleteButton.type = "button";
+  deleteButton.textContent = "削除";
+  deleteButton.disabled = Boolean(state.editingSettlementId);
+  deleteButton.addEventListener("click", () => deleteHistoryEntry(entry, deleteButton));
+  actions.append(result, editButton, deleteButton);
   title.append(date, actions);
   const details = document.createElement("p");
   details.textContent = `${entry.people.a} / ${entry.people.b} ・ ${formatYen(entry.totals.grandTotal)} ・ ${entry.items.length}件`;
@@ -541,6 +547,29 @@ function cancelHistoryEdit() {
     return;
   }
   render();
+}
+
+async function deleteHistoryEntry(entry, deleteButton) {
+  const confirmed = window.confirm("この精算履歴を削除しますか？ この操作は取り消せません。");
+  if (!confirmed) return;
+
+  deleteButton.disabled = true;
+  copyStatus.textContent = "削除中...";
+  try {
+    const rows = await supabaseRequest(`/rest/v1/settlements?id=eq.${encodeURIComponent(entry.id)}`, {
+      method: "DELETE",
+      headers: { Prefer: "return=representation" },
+    });
+    if (!rows?.[0]) {
+      throw new Error("履歴を削除できませんでした。Supabase の削除権限を確認してください。");
+    }
+    state.history = state.history.filter((candidate) => candidate.id !== entry.id);
+    copyStatus.textContent = "履歴を削除しました";
+  } catch (error) {
+    copyStatus.textContent = `削除失敗: ${error.message}`;
+  } finally {
+    renderHistory();
+  }
 }
 
 function formatHistoryTransfer(entry) {
