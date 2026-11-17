@@ -113,6 +113,7 @@ function addItem(item = {}) {
   state.items.unshift({
     id: crypto.randomUUID(),
     name: item.name || "",
+    purchaseDate: item.purchaseDate || getTodayDateValue(),
     price: Number(item.price) || 0,
     taxMode: item.taxMode || "included",
     owner: item.owner || "shared",
@@ -141,6 +142,7 @@ function render() {
 function createItemRow(item) {
   const row = itemTemplate.content.firstElementChild.cloneNode(true);
   const nameInput = row.querySelector(".name-input");
+  const purchaseDateInput = row.querySelector(".purchase-date-input");
   const priceInput = row.querySelector(".price-input");
   const taxSelect = row.querySelector(".tax-select");
   const taxPreview = row.querySelector(".tax-preview");
@@ -149,6 +151,7 @@ function createItemRow(item) {
   const deleteButton = row.querySelector(".delete-row");
 
   nameInput.value = item.name;
+  purchaseDateInput.value = item.purchaseDate;
   priceInput.value = item.price || "";
   taxSelect.value = item.taxMode;
   ownerSelect.value = item.owner;
@@ -158,6 +161,10 @@ function createItemRow(item) {
 
   nameInput.addEventListener("input", () => {
     item.name = nameInput.value;
+    renderTotals();
+  });
+  purchaseDateInput.addEventListener("change", () => {
+    item.purchaseDate = purchaseDateInput.value;
     renderTotals();
   });
   priceInput.addEventListener("input", () => {
@@ -290,11 +297,31 @@ function getTaxLabel(item) {
   return "税込";
 }
 
+function getTodayDateValue() {
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60 * 1000;
+  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
+function getDateValueFromTimestamp(value) {
+  const timestamp = new Date(value);
+  if (Number.isNaN(timestamp.getTime())) return getTodayDateValue();
+  const offsetMs = timestamp.getTimezoneOffset() * 60 * 1000;
+  return new Date(timestamp.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
+function formatPurchaseDate(value) {
+  if (!value) return "日付未入力";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "日付未入力";
+  return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric" }).format(date);
+}
+
 function buildSettlementText(totals) {
   const itemLines = state.items.length
     ? state.items.map((item) => {
         const owner = item.owner === "shared" ? "2人" : getName(item.owner);
-        return `・${item.name || "商品名未入力"} ${formatYen(getItemTotal(item))} (${getTaxLabel(item)}) / ${owner} / 支払い:${getName(item.payer)}`;
+        return `・${formatPurchaseDate(item.purchaseDate)} ${item.name || "商品名未入力"} ${formatYen(getItemTotal(item))} (${getTaxLabel(item)}) / ${owner} / 支払い:${getName(item.payer)}`;
       })
     : ["・商品未入力"];
   const transfer =
@@ -353,6 +380,7 @@ async function completeSettlement() {
       .filter((item) => item.name.trim() || Number(item.price) > 0)
       .map((item) => ({
         name: item.name.trim() || "商品名未入力",
+        purchaseDate: item.purchaseDate,
         price: Math.max(0, Math.round(Number(item.price) || 0)),
         taxMode: item.taxMode,
         owner: item.owner,
@@ -505,7 +533,10 @@ function createHistoryEntry(entry) {
   const details = document.createElement("p");
   details.textContent = `${entry.people.a} / ${entry.people.b} ・ ${formatYen(entry.totals.grandTotal)} ・ ${entry.items.length}件`;
   const itemSummary = document.createElement("small");
-  itemSummary.textContent = entry.items.slice(0, 3).map((item) => item.name).join("、") || "商品なし";
+  itemSummary.textContent = entry.items
+    .slice(0, 3)
+    .map((item) => `${formatPurchaseDate(item.purchaseDate || getDateValueFromTimestamp(entry.createdAt))} ${item.name}`)
+    .join("、") || "商品なし";
   article.append(title, details, itemSummary);
   return article;
 }
@@ -524,6 +555,7 @@ function editHistoryEntry(entry) {
   state.items = entry.items.map((item) => ({
     id: crypto.randomUUID(),
     name: item.name,
+    purchaseDate: item.purchaseDate || getDateValueFromTimestamp(entry.createdAt),
     price: Number(item.price) || 0,
     taxMode: item.taxMode || "included",
     owner: item.owner,

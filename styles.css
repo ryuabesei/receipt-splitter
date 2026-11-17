@@ -454,7 +454,7 @@ button:focus-visible {
 .table-head,
 .item-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1.3fr) 120px minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) 42px;
+  grid-template-columns: minmax(150px, 1.2fr) minmax(132px, 0.9fr) 120px minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) 42px;
   gap: 8px;
   align-items: center;
 }
@@ -771,7 +771,7 @@ button:not(:disabled):active {
   100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) rotate(var(--r)); }
 }
 
-@media (max-width: 1120px) {
+@media (max-width: 1360px) {
   .app-shell {
     grid-template-areas:
       "workspace"
